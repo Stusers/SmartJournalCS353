@@ -1,4 +1,4 @@
-# SmartJournalCS353
+#  SmartJournalCS353
 🌼 Smart Journal – A Calming Wellbeing & Reflection App
 🧘 Overview
 Smart Journal is a mindfulness and wellbeing journaling app designed to help users reflect, track moods, and nurture emotional balance through a calm, minimal, and intuitive interface.
