@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node --loader ts-node/esm ./src/index.ts",
-    "dev": "node --loader ts-node/esm --watch ./src/index.ts"
+    "start": "tsx ./src/index.ts",
+    "dev": "tsx watch ./src/index.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",
