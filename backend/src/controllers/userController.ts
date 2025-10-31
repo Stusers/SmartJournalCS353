@@ -1,121 +1,93 @@
 import { Request, Response } from 'express';
 import * as userDb from '../db/functions/users.js';
 import * as streakDb from '../db/functions/streaks.js';
+import { asyncHandler, AppError } from '../middleware/errorHandler.js';
+import { HTTP_STATUS, ERROR_MESSAGES } from '../config/constants.js';
 
-export async function createUser(req: Request, res: Response) {
-  try {
-    const { username, email, password_hash } = req.body;
+export const createUser = asyncHandler(async (req: Request, res: Response) => {
+  const { username, email, password_hash } = req.body;
 
-    if (!username || !email || !password_hash) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    const existingUsername = await userDb.getUserByUsername(username);
-    if (existingUsername) {
-      return res.status(409).json({ error: 'Username already exists' });
-    }
-
-    const existingEmail = await userDb.getUserByEmail(email);
-    if (existingEmail) {
-      return res.status(409).json({ error: 'Email already exists' });
-    }
-
-    const user = await userDb.createUser({ username, email, password_hash });
-    await streakDb.initializeUserStreak(user.id);
-
-    const { password_hash: _, ...userWithoutPassword } = user;
-    res.status(201).json(userWithoutPassword);
-  } catch (error) {
-    console.error('Error creating user:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  if (!username || !email || !password_hash) {
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, ERROR_MESSAGES.MISSING_REQUIRED_FIELDS);
   }
-}
 
-export async function getUserById(req: Request, res: Response) {
-  try {
-    const userId = parseInt(req.params.id);
-    const user = await userDb.getUserById(userId);
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const { password_hash: _, ...userWithoutPassword } = user;
-    res.json(userWithoutPassword);
-  } catch (error) {
-    console.error('Error fetching user:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  const existingUsername = await userDb.getUserByUsername(username);
+  if (existingUsername) {
+    throw new AppError(HTTP_STATUS.CONFLICT, 'Username already exists');
   }
-}
 
-export async function updateUserEmail(req: Request, res: Response) {
-  try {
-    const userId = parseInt(req.params.id);
-    const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json({ error: 'Missing email' });
-    }
-
-    const user = await userDb.updateUserEmail(userId, email);
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const { password_hash: _, ...userWithoutPassword } = user;
-    res.json(userWithoutPassword);
-  } catch (error) {
-    console.error('Error updating user email:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  const existingEmail = await userDb.getUserByEmail(email);
+  if (existingEmail) {
+    throw new AppError(HTTP_STATUS.CONFLICT, 'Email already exists');
   }
-}
 
-export async function updateUserPassword(req: Request, res: Response) {
-  try {
-    const userId = parseInt(req.params.id);
-    const { password_hash } = req.body;
+  const user = await userDb.createUser({ username, email, password_hash });
+  await streakDb.initializeUserStreak(user.id);
 
-    if (!password_hash) {
-      return res.status(400).json({ error: 'Missing password_hash' });
-    }
+  const { password_hash: _, ...userWithoutPassword } = user;
+  res.status(HTTP_STATUS.CREATED).json(userWithoutPassword);
+});
 
-    const user = await userDb.updateUserPassword(userId, password_hash);
+export const getUserById = asyncHandler(async (req: Request, res: Response) => {
+  const userId = parseInt(req.params.id);
+  const user = await userDb.getUserById(userId);
 
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    res.json({ message: 'Password updated successfully' });
-  } catch (error) {
-    console.error('Error updating user password:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  if (!user) {
+    throw new AppError(HTTP_STATUS.NOT_FOUND, ERROR_MESSAGES.USER_NOT_FOUND);
   }
-}
 
-export async function deleteUser(req: Request, res: Response) {
-  try {
-    const userId = parseInt(req.params.id);
-    const success = await userDb.deleteUser(userId);
+  const { password_hash: _, ...userWithoutPassword } = user;
+  res.status(HTTP_STATUS.OK).json(userWithoutPassword);
+});
 
-    if (!success) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+export const updateUserEmail = asyncHandler(async (req: Request, res: Response) => {
+  const userId = parseInt(req.params.id);
+  const { email } = req.body;
 
-    res.status(204).send();
-  } catch (error) {
-    console.error('Error deleting user:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  if (!email) {
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, 'Missing email');
   }
-}
 
-export async function getUserStats(req: Request, res: Response) {
-  try {
-    const userId = parseInt(req.params.id);
-    const stats = await streakDb.getUserStats(userId);
-    res.json(stats);
-  } catch (error) {
-    console.error('Error fetching user stats:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  const user = await userDb.updateUserEmail(userId, email);
+
+  if (!user) {
+    throw new AppError(HTTP_STATUS.NOT_FOUND, ERROR_MESSAGES.USER_NOT_FOUND);
   }
-}
+
+  const { password_hash: _, ...userWithoutPassword } = user;
+  res.status(HTTP_STATUS.OK).json(userWithoutPassword);
+});
+
+export const updateUserPassword = asyncHandler(async (req: Request, res: Response) => {
+  const userId = parseInt(req.params.id);
+  const { password_hash } = req.body;
+
+  if (!password_hash) {
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, 'Missing password_hash');
+  }
+
+  const user = await userDb.updateUserPassword(userId, password_hash);
+
+  if (!user) {
+    throw new AppError(HTTP_STATUS.NOT_FOUND, ERROR_MESSAGES.USER_NOT_FOUND);
+  }
+
+  res.status(HTTP_STATUS.OK).json({ message: 'Password updated successfully' });
+});
+
+export const deleteUser = asyncHandler(async (req: Request, res: Response) => {
+  const userId = parseInt(req.params.id);
+  const success = await userDb.deleteUser(userId);
+
+  if (!success) {
+    throw new AppError(HTTP_STATUS.NOT_FOUND, ERROR_MESSAGES.USER_NOT_FOUND);
+  }
+
+  res.status(HTTP_STATUS.NO_CONTENT).send();
+});
+
+export const getUserStats = asyncHandler(async (req: Request, res: Response) => {
+  const userId = parseInt(req.params.id);
+  const stats = await streakDb.getUserStats(userId);
+  res.status(HTTP_STATUS.OK).json(stats);
+});

@@ -1,42 +1,363 @@
-#root {
-  max-width: 1280px;
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f5f5f5;
+  color: #333;
+}
+
+/* Start Screen */
+.start-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.start-box {
+  background: white;
+  padding: 3rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+}
+
+.start-box h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  color: #667eea;
+}
+
+.start-box p {
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.start-box form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.start-box input {
+  padding: 1rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  transition: border-color 0.3s;
+}
+
+.start-box input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.start-box button {
+  padding: 1rem;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.start-box button:hover {
+  background: #5568d3;
+}
+
+/* Main App */
+.app {
+  max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+header h1 {
+  color: #667eea;
+  font-size: 2rem;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-info span {
+  color: #666;
+  font-size: 1rem;
+}
+
+.btn-reset {
+  padding: 0.5rem 1rem;
+  background: #f0f0f0;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.3s;
+}
+
+.btn-reset:hover {
+  background: #e0e0e0;
+}
+
+/* Main Layout */
+main {
+  display: grid;
+  grid-template-columns: 500px 1fr;
+  gap: 2rem;
+}
+
+.write-section,
+.entries-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.write-section {
+  position: sticky;
+  top: 2rem;
+  height: fit-content;
+}
+
+h2 {
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+/* Prompt Box */
+.prompt-box {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.prompt-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.9;
+  margin-bottom: 0.5rem;
+}
+
+.prompt-text {
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.btn-small {
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background 0.3s;
+}
+
+.btn-small:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Message */
+.message {
+  padding: 1rem;
+  background: #d1fae5;
+  color: #065f46;
+  border-radius: 6px;
+  margin-bottom: 1rem;
   text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* Form */
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+textarea,
+select,
+input {
+  padding: 0.75rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: border-color 0.3s;
+}
+
+textarea:focus,
+select:focus,
+input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 150px;
+  line-height: 1.6;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+}
+
+button[type="submit"] {
+  padding: 0.75rem 2rem;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+button[type="submit"]:hover:not(:disabled) {
+  background: #5568d3;
+}
+
+button[type="submit"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Entries List */
+.empty {
+  text-align: center;
+  color: #999;
+  padding: 3rem 1rem;
+  font-size: 1.1rem;
+}
+
+.entries-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.entry-card {
+  border: 2px solid #f0f0f0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  transition: all 0.3s;
+  position: relative;
+}
+
+.entry-card:hover {
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+}
+
+.entry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.date {
+  font-weight: 600;
+  color: #667eea;
+}
+
+.mood {
+  background: #f0f0f0;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.text {
+  color: #333;
+  line-height: 1.7;
+  margin-bottom: 1rem;
+}
+
+.entry-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f0f0f0;
+}
+
+.entry-footer small {
+  color: #999;
+}
+
+.btn-delete {
+  padding: 0.5rem 1rem;
+  background: #fee;
+  color: #c33;
+  border: 1px solid #fcc;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.3s;
+}
+
+.btn-delete:hover {
+  background: #fcc;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  main {
+    grid-template-columns: 1fr;
   }
-  to {
-    transform: rotate(360deg);
+
+  .write-section {
+    position: static;
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+@media (max-width: 600px) {
+  .app {
+    padding: 1rem;
   }
-}
 
-.card {
-  padding: 2em;
-}
+  header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
 
-.read-the-docs {
-  color: #888;
+  .form-row {
+    grid-template-columns: 1fr;
+  }
 }

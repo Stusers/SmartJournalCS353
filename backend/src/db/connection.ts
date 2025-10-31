@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import { logger } from '../utils/logger.js';
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
@@ -11,22 +12,47 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
+// Handle pool errors
+pool.on('error', (err) => {
+  logger.error({
+    type: 'pool_error',
+    message: 'Unexpected error on idle client',
+    error: err.message,
+    stack: err.stack,
+  });
+});
+
 export async function testConnection(): Promise<boolean> {
   try {
     const client = await pool.connect();
     await client.query('SELECT NOW()');
     client.release();
-    console.log('Database connected successfully');
+    logger.info('Database connected successfully');
     return true;
-  } catch (error) {
-    console.error('Database connection failed:', error);
+  } catch (error: any) {
+    logger.error({
+      type: 'connection_test_failed',
+      message: 'Database connection failed',
+      error: error.message,
+      code: error.code,
+      detail: error.detail,
+    });
     return false;
   }
 }
 
 export async function closePool(): Promise<void> {
-  await pool.end();
-  console.log('Database pool closed');
+  try {
+    await pool.end();
+    logger.info('Database pool closed');
+  } catch (error: any) {
+    logger.error({
+      type: 'pool_close_error',
+      message: 'Error closing database pool',
+      error: error.message,
+    });
+    throw error;
+  }
 }
 
 export default pool;

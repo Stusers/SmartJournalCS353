@@ -1,70 +1,47 @@
 import { Request, Response } from 'express';
 import * as promptDb from '../db/functions/prompts.js';
+import { asyncHandler, AppError } from '../middleware/errorHandler.js';
+import { HTTP_STATUS, ERROR_MESSAGES } from '../config/constants.js';
 
-export async function createPrompt(req: Request, res: Response) {
-  try {
-    const { prompt_text, category } = req.body;
+export const createPrompt = asyncHandler(async (req: Request, res: Response) => {
+  const { prompt_text, category } = req.body;
 
-    if (!prompt_text) {
-      return res.status(400).json({ error: 'Missing prompt_text' });
-    }
-
-    const prompt = await promptDb.createPrompt(prompt_text, category);
-    res.status(201).json(prompt);
-  } catch (error) {
-    console.error('Error creating prompt:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  if (!prompt_text) {
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, 'Missing prompt_text');
   }
-}
 
-export async function getRandomPrompt(req: Request, res: Response) {
-  try {
-    const prompt = await promptDb.getRandomPrompt();
+  const prompt = await promptDb.createPrompt(prompt_text, category);
+  res.status(HTTP_STATUS.CREATED).json(prompt);
+});
 
-    if (!prompt) {
-      return res.status(404).json({ error: 'No prompts available' });
-    }
+export const getRandomPrompt = asyncHandler(async (req: Request, res: Response) => {
+  const prompt = await promptDb.getRandomPrompt();
 
-    res.json(prompt);
-  } catch (error) {
-    console.error('Error fetching random prompt:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  if (!prompt) {
+    throw new AppError(HTTP_STATUS.NOT_FOUND, 'No prompts available');
   }
-}
 
-export async function getAllPrompts(req: Request, res: Response) {
-  try {
-    const prompts = await promptDb.getAllPrompts();
-    res.json(prompts);
-  } catch (error) {
-    console.error('Error fetching prompts:', error);
-    res.status(500).json({ error: 'Internal server error' });
+  res.status(HTTP_STATUS.OK).json(prompt);
+});
+
+export const getAllPrompts = asyncHandler(async (req: Request, res: Response) => {
+  const prompts = await promptDb.getAllPrompts();
+  res.status(HTTP_STATUS.OK).json(prompts);
+});
+
+export const getPromptsByCategory = asyncHandler(async (req: Request, res: Response) => {
+  const category = req.params.category;
+  const prompts = await promptDb.getPromptsByCategory(category);
+  res.status(HTTP_STATUS.OK).json(prompts);
+});
+
+export const deletePrompt = asyncHandler(async (req: Request, res: Response) => {
+  const promptId = parseInt(req.params.id);
+  const success = await promptDb.deletePrompt(promptId);
+
+  if (!success) {
+    throw new AppError(HTTP_STATUS.NOT_FOUND, ERROR_MESSAGES.PROMPT_NOT_FOUND);
   }
-}
 
-export async function getPromptsByCategory(req: Request, res: Response) {
-  try {
-    const category = req.params.category;
-    const prompts = await promptDb.getPromptsByCategory(category);
-    res.json(prompts);
-  } catch (error) {
-    console.error('Error fetching prompts by category:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-}
-
-export async function deletePrompt(req: Request, res: Response) {
-  try {
-    const promptId = parseInt(req.params.id);
-    const success = await promptDb.deletePrompt(promptId);
-
-    if (!success) {
-      return res.status(404).json({ error: 'Prompt not found' });
-    }
-
-    res.status(204).send();
-  } catch (error) {
-    console.error('Error deleting prompt:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-}
+  res.status(HTTP_STATUS.NO_CONTENT).send();
+});

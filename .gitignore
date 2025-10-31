@@ -12,6 +12,9 @@ backend/dist/
 # Ignore environment files
 .env
 .env.*
+backend/.env
+frontend/.env
+!**/.env.example
 
 # Ignore logs
 *.log
