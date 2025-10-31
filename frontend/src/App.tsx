@@ -1,35 +1,68 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { Login } from './components/Login';
+import { JournalForm } from './components/JournalForm';
+import { JournalList } from './components/JournalList';
+import { StatsAndAchievements } from './components/StatsAndAchievements';
+import './App.css';
 
-function App() {
-  const [count, setCount] = useState(0)
+function AppContent() {
+  const { user, logout, isAuthenticated } = useAuth();
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const handleEntryCreated = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  if (!isAuthenticated || !user) {
+    return <Login />;
+  }
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div className="app">
+      <header className="app-header">
+        <div className="header-content">
+          <h1>SmartJournal</h1>
+          <div className="user-info">
+            <span className="user-greeting">
+              Welcome, <strong>{user.username}</strong>
+            </span>
+            <button onClick={logout} className="btn-logout" title="Logout">
+              Logout
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="app-main">
+        <div className="main-content">
+          <div className="left-column">
+            <JournalForm onEntryCreated={handleEntryCreated} />
+          </div>
+
+          <div className="right-column">
+            <StatsAndAchievements refreshTrigger={refreshTrigger} />
+            <JournalList refreshTrigger={refreshTrigger} />
+          </div>
+        </div>
+      </main>
+
+      <footer className="app-footer">
+        <p>SmartJournal - Track your gratitude journey</p>
+        <div className="debug-info">
+          <small>User ID: {user.id} | Backend: http://localhost:3000</small>
+        </div>
+      </footer>
+    </div>
+  );
 }
 
-export default App
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
+
+export default App;

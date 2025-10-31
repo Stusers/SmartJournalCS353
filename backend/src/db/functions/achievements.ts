@@ -42,21 +42,64 @@ export async function grantAchievement(userId: number, achievementId: number): P
   return result.rows[0];
 }
 
-export async function checkAndGrantAchievements(userId: number): Promise<Achievement[]> {
-  const allAchievements = await getAllAchievements();
-  const userAchievements = await getUserAchievements(userId);
-  const userAchievementIds = new Set(userAchievements.map(a => a.id));
-
-  const streakResult = await query<{ current_streak: number; total_entries: number }>(
+/**
+ * Helper function to get user stats (reused by multiple functions)
+ */
+async function getUserStats(userId: number) {
+  const result = await query<{ current_streak: number; total_entries: number }>(
     'SELECT current_streak, total_entries FROM user_streaks WHERE user_id = $1',
     [userId]
   );
+  return result.rows[0] || { current_streak: 0, total_entries: 0 };
+}
 
-  if (streakResult.rows.length === 0) {
-    return [];
+/**
+ * Helper function to check if achievement requirement is met
+ */
+function checkAchievementQualification(
+  achievement: Achievement,
+  stats: { current_streak: number; total_entries: number }
+): boolean {
+  switch (achievement.requirement_type) {
+    case 'streak':
+      return stats.current_streak >= achievement.requirement_value;
+    case 'total_entries':
+      return stats.total_entries >= achievement.requirement_value;
+    default:
+      return false;
+  }
+}
+
+/**
+ * Calculate progress for an achievement
+ */
+function calculateProgress(
+  achievement: Achievement,
+  stats: { current_streak: number; total_entries: number }
+): { progress: number; currentValue: number } {
+  let currentValue = 0;
+
+  switch (achievement.requirement_type) {
+    case 'streak':
+      currentValue = stats.current_streak;
+      break;
+    case 'total_entries':
+      currentValue = stats.total_entries;
+      break;
   }
 
-  const { current_streak, total_entries } = streakResult.rows[0];
+  const progress = Math.min((currentValue / achievement.requirement_value) * 100, 100);
+  return { progress, currentValue };
+}
+
+export async function checkAndGrantAchievements(userId: number): Promise<Achievement[]> {
+  const [allAchievements, userAchievements, stats] = await Promise.all([
+    getAllAchievements(),
+    getUserAchievements(userId),
+    getUserStats(userId),
+  ]);
+
+  const userAchievementIds = new Set(userAchievements.map(a => a.id));
   const newlyGranted: Achievement[] = [];
 
   for (const achievement of allAchievements) {
@@ -64,18 +107,7 @@ export async function checkAndGrantAchievements(userId: number): Promise<Achieve
       continue;
     }
 
-    let qualifies = false;
-
-    switch (achievement.requirement_type) {
-      case 'streak':
-        qualifies = current_streak >= achievement.requirement_value;
-        break;
-      case 'total_entries':
-        qualifies = total_entries >= achievement.requirement_value;
-        break;
-    }
-
-    if (qualifies) {
+    if (checkAchievementQualification(achievement, stats)) {
       await grantAchievement(userId, achievement.id);
       newlyGranted.push(achievement);
     }
@@ -85,32 +117,17 @@ export async function checkAndGrantAchievements(userId: number): Promise<Achieve
 }
 
 export async function getUserAchievementProgress(userId: number): Promise<any[]> {
-  const allAchievements = await getAllAchievements();
-  const userAchievements = await getUserAchievements(userId);
+  const [allAchievements, userAchievements, stats] = await Promise.all([
+    getAllAchievements(),
+    getUserAchievements(userId),
+    getUserStats(userId),
+  ]);
+
   const userAchievementIds = new Set(userAchievements.map(a => a.id));
-
-  const streakResult = await query<{ current_streak: number; total_entries: number }>(
-    'SELECT current_streak, total_entries FROM user_streaks WHERE user_id = $1',
-    [userId]
-  );
-
-  const stats = streakResult.rows[0] || { current_streak: 0, total_entries: 0 };
 
   return allAchievements.map(achievement => {
     const earned = userAchievementIds.has(achievement.id);
-    let progress = 0;
-    let currentValue = 0;
-
-    switch (achievement.requirement_type) {
-      case 'streak':
-        currentValue = stats.current_streak;
-        progress = Math.min((currentValue / achievement.requirement_value) * 100, 100);
-        break;
-      case 'total_entries':
-        currentValue = stats.total_entries;
-        progress = Math.min((currentValue / achievement.requirement_value) * 100, 100);
-        break;
-    }
+    const { progress, currentValue } = calculateProgress(achievement, stats);
 
     return {
       ...achievement,

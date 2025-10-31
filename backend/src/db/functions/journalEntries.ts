@@ -1,5 +1,6 @@
 import { query } from '../helpers.js';
 import { JournalEntry, CreateJournalEntryInput, UpdateJournalEntryInput } from '../../types/index.js';
+import { PAGINATION } from '../../config/constants.js';
 
 export async function createJournalEntry(input: CreateJournalEntryInput): Promise<JournalEntry> {
   const { user_id, entry_date, gratitude_text, mood, tags, is_private = false } = input;
@@ -34,8 +35,8 @@ export async function getJournalEntryByUserAndDate(userId: number, date: Date): 
 
 export async function getUserJournalEntries(
   userId: number,
-  limit: number = 50,
-  offset: number = 0
+  limit: number = PAGINATION.DEFAULT_LIMIT,
+  offset: number = PAGINATION.DEFAULT_OFFSET
 ): Promise<JournalEntry[]> {
   const result = await query<JournalEntry>(
     `SELECT * FROM journal_entries
@@ -67,39 +68,28 @@ export async function updateJournalEntry(
   entryId: number,
   updates: UpdateJournalEntryInput
 ): Promise<JournalEntry | null> {
+  // Build update fields and values dynamically
+  const allowedFields = ['gratitude_text', 'mood', 'tags', 'is_private'] as const;
   const fields: string[] = [];
   const values: any[] = [];
-  let paramCount = 1;
 
-  if (updates.gratitude_text !== undefined) {
-    fields.push(`gratitude_text = $${paramCount}`);
-    values.push(updates.gratitude_text);
-    paramCount++;
-  }
-  if (updates.mood !== undefined) {
-    fields.push(`mood = $${paramCount}`);
-    values.push(updates.mood);
-    paramCount++;
-  }
-  if (updates.tags !== undefined) {
-    fields.push(`tags = $${paramCount}`);
-    values.push(updates.tags);
-    paramCount++;
-  }
-  if (updates.is_private !== undefined) {
-    fields.push(`is_private = $${paramCount}`);
-    values.push(updates.is_private);
-    paramCount++;
-  }
+  allowedFields.forEach((field) => {
+    if (updates[field] !== undefined) {
+      fields.push(`${field} = $${fields.length + 1}`);
+      values.push(updates[field]);
+    }
+  });
 
+  // If no fields to update, return current entry
   if (fields.length === 0) {
     return getJournalEntryById(entryId);
   }
 
+  // Add entryId as the last parameter
   values.push(entryId);
 
   const result = await query<JournalEntry>(
-    `UPDATE journal_entries SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+    `UPDATE journal_entries SET ${fields.join(', ')} WHERE id = $${values.length} RETURNING *`,
     values
   );
 
@@ -127,7 +117,7 @@ export async function getUserEntryCount(userId: number): Promise<number> {
 export async function searchUserEntries(
   userId: number,
   searchTerm: string,
-  limit: number = 50
+  limit: number = PAGINATION.DEFAULT_LIMIT
 ): Promise<JournalEntry[]> {
   const result = await query<JournalEntry>(
     `SELECT * FROM journal_entries
@@ -143,7 +133,7 @@ export async function searchUserEntries(
 export async function getUserEntriesByTag(
   userId: number,
   tag: string,
-  limit: number = 50
+  limit: number = PAGINATION.DEFAULT_LIMIT
 ): Promise<JournalEntry[]> {
   const result = await query<JournalEntry>(
     `SELECT * FROM journal_entries
@@ -159,7 +149,7 @@ export async function getUserEntriesByTag(
 export async function getUserEntriesByMood(
   userId: number,
   mood: string,
-  limit: number = 50
+  limit: number = PAGINATION.DEFAULT_LIMIT
 ): Promise<JournalEntry[]> {
   const result = await query<JournalEntry>(
     `SELECT * FROM journal_entries
