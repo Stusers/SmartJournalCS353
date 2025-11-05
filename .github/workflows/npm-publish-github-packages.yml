@@ -1,4 +1,4 @@
-name: Node.js CIID
+name: Node.js CI
 
 # concurrency should prevent overlapping runs
 concurrency:
@@ -37,7 +37,7 @@ jobs:
     - name: Run tests
       run: |
         mkdir -p ./reports
-        npm test || echo "Tests failed"
+        npm test |
 
 #uploads test results regardless of outcome
     - name: Upload test results
@@ -61,7 +61,6 @@ jobs:
           dist/**
           build/**
           .next/**
-          node_modules/**
 
     - name: Publish to NPM
       if: github.ref == 'refs/heads/backend' && success()
