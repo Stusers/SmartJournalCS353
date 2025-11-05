@@ -65,7 +65,7 @@ jobs:
 
 # deploys only if on Backend and all previous steps were successful
     - name: Deploy to Azure Web App
-      if: github.ref == 'refs/heads/Backend' && success()
+      if: github.ref == 'refs/heads/backend' && success()
       uses: azure/webapps-deploy@v2
       with:
 
@@ -75,6 +75,9 @@ jobs:
         app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
         package: ./build
-      - run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        
+    - name: Publish to NPM
+      if: github.ref == 'refs/heads/backend' && success()
+      run: npm publish
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
