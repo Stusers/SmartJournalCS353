@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { useAuth } from './context/AuthContext';
+import { useUser } from '@clerk/clerk-react';
 import { Login } from './components/Login';
 import WeeklyReflection from './components/WeeklyReflection';
 import GratitudeWall from './components/GratitudeWall';
@@ -13,10 +14,36 @@ type Page = 'reflection' | 'gratitude' | 'garden' | 'mindfulness' | 'calendar' |
 
 function AppContent() {
   const { user, logout, isAuthenticated } = useAuth();
+  const { user: clerkUser, isLoaded } = useUser();
   const [currentPage, setCurrentPage] = useState<Page>('reflection');
 
-  if (!isAuthenticated || !user) {
+  // Show loading while Clerk is loading
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50">
+        <div className="text-center">
+          <div className="text-2xl mb-2">📔</div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login only if no Clerk user (not authenticated with Clerk)
+  if (!clerkUser) {
     return <Login />;
+  }
+
+  // Show loading while fetching database user
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50">
+        <div className="text-center">
+          <div className="text-2xl mb-2">📔</div>
+          <p className="text-gray-600">Setting up your journal...</p>
+        </div>
+      </div>
+    );
   }
 
   const renderPage = () => {
@@ -142,11 +169,7 @@ function AppContent() {
 }
 
 function App() {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
-  );
+  return <AppContent />;
 }
 
 export default App;

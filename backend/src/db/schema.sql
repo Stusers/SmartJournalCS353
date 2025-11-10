@@ -3,12 +3,24 @@
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
+    clerk_id VARCHAR(255) UNIQUE,
     username VARCHAR(255) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Add clerk_id column if it doesn't exist (for existing databases)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'users' AND column_name = 'clerk_id'
+    ) THEN
+        ALTER TABLE users ADD COLUMN clerk_id VARCHAR(255) UNIQUE;
+    END IF;
+END $$;
 
 -- Journal entries table
 CREATE TABLE IF NOT EXISTS journal_entries (

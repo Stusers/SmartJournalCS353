@@ -1,30 +1,36 @@
 import { useState, useEffect } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
-import { journalApi } from '../lib/api';
+import { useApi } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import type { JournalEntry } from 'shared';
 
 export default function CalendarOverview() {
   const { user } = useAuth();
+  const { journalApi } = useApi();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  const loadEntries = async () => {
+    if (!user) return;
+    
+    try {
+      console.log('Loading calendar entries...');
+      const allEntries = await journalApi.getByUserId(user.id, 100);
+      setEntries(allEntries);
+    } catch (error) {
+      console.error('Failed to load entries:', error);
+      setEntries([]);
+    }
+  };
 
   useEffect(() => {
     if (user) {
       loadEntries();
     }
-  }, [user, currentMonth]);
-
-  const loadEntries = async () => {
-    try {
-      const allEntries = await journalApi.getByUserId(user!.id, 100);
-      setEntries(allEntries);
-    } catch (error) {
-      console.error('Failed to load entries:', error);
-    }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, currentMonth]);
 
   const getEntryForDate = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];

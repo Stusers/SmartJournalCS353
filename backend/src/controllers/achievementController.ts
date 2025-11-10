@@ -9,13 +9,13 @@ export const getAllAchievements = asyncHandler(async (req: Request, res: Respons
 });
 
 export const getUserAchievements = asyncHandler(async (req: Request, res: Response) => {
-  const userId = parseInt(req.params.userId);
+  const userId = req.userId!; // Set by clerkAuth middleware
   const achievements = await achievementDb.getUserAchievements(userId);
   res.status(HTTP_STATUS.OK).json(achievements);
 });
 
 export const getUserAchievementProgress = asyncHandler(async (req: Request, res: Response) => {
-  const userId = parseInt(req.params.userId);
+  const userId = req.userId!; // Set by clerkAuth middleware
   const progress = await achievementDb.getUserAchievementProgress(userId);
   res.status(HTTP_STATUS.OK).json(progress);
 });

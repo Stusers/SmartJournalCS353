@@ -6,19 +6,20 @@ import { asyncHandler, AppError } from '../middleware/errorHandler.js';
 import { HTTP_STATUS, ERROR_MESSAGES, PAGINATION } from '../config/constants.js';
 
 export const createEntry = asyncHandler(async (req: Request, res: Response) => {
-  const { user_id, entry_date, gratitude_text, mood, tags, is_private } = req.body;
+  const { entry_date, gratitude_text, mood, tags, is_private } = req.body;
+  const userId = req.userId!; // Set by clerkAuth middleware
 
-  if (!user_id || !entry_date || !gratitude_text) {
+  if (!entry_date || !gratitude_text) {
     throw new AppError(HTTP_STATUS.BAD_REQUEST, ERROR_MESSAGES.MISSING_REQUIRED_FIELDS);
   }
 
-  const existingEntry = await journalDb.getJournalEntryByUserAndDate(user_id, new Date(entry_date));
+  const existingEntry = await journalDb.getJournalEntryByUserAndDate(userId, new Date(entry_date));
   if (existingEntry) {
     throw new AppError(HTTP_STATUS.CONFLICT, 'Entry already exists for this date');
   }
 
   const entry = await journalDb.createJournalEntry({
-    user_id,
+    user_id: userId,
     entry_date: new Date(entry_date),
     gratitude_text,
     mood,
@@ -26,8 +27,8 @@ export const createEntry = asyncHandler(async (req: Request, res: Response) => {
     is_private,
   });
 
-  await streakDb.updateStreakAfterEntry(user_id, new Date(entry_date));
-  const newAchievements = await achievementDb.checkAndGrantAchievements(user_id);
+  await streakDb.updateStreakAfterEntry(userId, new Date(entry_date));
+  const newAchievements = await achievementDb.checkAndGrantAchievements(userId);
 
   res.status(HTTP_STATUS.CREATED).json({
     entry,
@@ -37,17 +38,23 @@ export const createEntry = asyncHandler(async (req: Request, res: Response) => {
 
 export const getEntryById = asyncHandler(async (req: Request, res: Response) => {
   const entryId = parseInt(req.params.id);
+  const userId = req.userId!; // Set by clerkAuth middleware
   const entry = await journalDb.getJournalEntryById(entryId);
 
   if (!entry) {
     throw new AppError(HTTP_STATUS.NOT_FOUND, ERROR_MESSAGES.ENTRY_NOT_FOUND);
   }
 
+  // Ensure user can only access their own entries
+  if (entry.user_id !== userId) {
+    throw new AppError(HTTP_STATUS.FORBIDDEN, 'Access denied');
+  }
+
   res.status(HTTP_STATUS.OK).json(entry);
 });
 
 export const getUserEntries = asyncHandler(async (req: Request, res: Response) => {
-  const userId = parseInt(req.params.userId);
+  const userId = req.userId!; // Set by clerkAuth middleware
   const limit = parseInt(req.query.limit as string) || PAGINATION.DEFAULT_LIMIT;
   const offset = parseInt(req.query.offset as string) || PAGINATION.DEFAULT_OFFSET;
 
@@ -56,7 +63,7 @@ export const getUserEntries = asyncHandler(async (req: Request, res: Response) =
 });
 
 export const getEntriesByDateRange = asyncHandler(async (req: Request, res: Response) => {
-  const userId = parseInt(req.params.userId);
+  const userId = req.userId!; // Set by clerkAuth middleware
   const { start_date, end_date } = req.query;
 
   if (!start_date || !end_date) {
@@ -74,30 +81,43 @@ export const getEntriesByDateRange = asyncHandler(async (req: Request, res: Resp
 
 export const updateEntry = asyncHandler(async (req: Request, res: Response) => {
   const entryId = parseInt(req.params.id);
+  const userId = req.userId!; // Set by clerkAuth middleware
   const updates = req.body;
 
-  const entry = await journalDb.updateJournalEntry(entryId, updates);
-
-  if (!entry) {
+  // First check if entry exists and belongs to user
+  const existingEntry = await journalDb.getJournalEntryById(entryId);
+  if (!existingEntry) {
     throw new AppError(HTTP_STATUS.NOT_FOUND, ERROR_MESSAGES.ENTRY_NOT_FOUND);
   }
 
+  if (existingEntry.user_id !== userId) {
+    throw new AppError(HTTP_STATUS.FORBIDDEN, 'Access denied');
+  }
+
+  const entry = await journalDb.updateJournalEntry(entryId, updates);
   res.status(HTTP_STATUS.OK).json(entry);
 });
 
 export const deleteEntry = asyncHandler(async (req: Request, res: Response) => {
   const entryId = parseInt(req.params.id);
-  const success = await journalDb.deleteJournalEntry(entryId);
+  const userId = req.userId!; // Set by clerkAuth middleware
 
-  if (!success) {
+  // First check if entry exists and belongs to user
+  const existingEntry = await journalDb.getJournalEntryById(entryId);
+  if (!existingEntry) {
     throw new AppError(HTTP_STATUS.NOT_FOUND, ERROR_MESSAGES.ENTRY_NOT_FOUND);
   }
 
+  if (existingEntry.user_id !== userId) {
+    throw new AppError(HTTP_STATUS.FORBIDDEN, 'Access denied');
+  }
+
+  const success = await journalDb.deleteJournalEntry(entryId);
   res.status(HTTP_STATUS.NO_CONTENT).send();
 });
 
 export const searchEntries = asyncHandler(async (req: Request, res: Response) => {
-  const userId = parseInt(req.params.userId);
+  const userId = req.userId!; // Set by clerkAuth middleware
   const searchTerm = req.query.q as string;
   const limit = parseInt(req.query.limit as string) || PAGINATION.DEFAULT_LIMIT;
 
@@ -110,7 +130,7 @@ export const searchEntries = asyncHandler(async (req: Request, res: Response) =>
 });
 
 export const getEntriesByTag = asyncHandler(async (req: Request, res: Response) => {
-  const userId = parseInt(req.params.userId);
+  const userId = req.userId!; // Set by clerkAuth middleware
   const tag = req.params.tag;
   const limit = parseInt(req.query.limit as string) || PAGINATION.DEFAULT_LIMIT;
 
@@ -119,10 +139,11 @@ export const getEntriesByTag = asyncHandler(async (req: Request, res: Response) 
 });
 
 export const getEntriesByMood = asyncHandler(async (req: Request, res: Response) => {
-  const userId = parseInt(req.params.userId);
+  const userId = req.userId!; // Set by clerkAuth middleware
   const mood = req.params.mood;
   const limit = parseInt(req.query.limit as string) || PAGINATION.DEFAULT_LIMIT;
 
   const entries = await journalDb.getUserEntriesByMood(userId, mood, limit);
   res.status(HTTP_STATUS.OK).json(entries);
 });
+

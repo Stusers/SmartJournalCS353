@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import * as userController from '../controllers/userController.js';
+import { clerkAuth } from '../middleware/clerkAuth.js';
 
 const router = Router();
 
-router.post('/users', userController.createUser);
-router.get('/users/:id', userController.getUserById);
-router.put('/users/:id/email', userController.updateUserEmail);
-router.put('/users/:id/password', userController.updateUserPassword);
-router.delete('/users/:id', userController.deleteUser);
-router.get('/users/:id/stats', userController.getUserStats);
+// User routes require authentication (except create, which is handled by Clerk)
+router.get('/users/me', clerkAuth, userController.getCurrentUser);
+router.get('/users/me/stats', clerkAuth, userController.getUserStats);
+// Remove password/email update routes as Clerk handles this
+// Remove delete route or protect it with additional checks
 
 export default router;

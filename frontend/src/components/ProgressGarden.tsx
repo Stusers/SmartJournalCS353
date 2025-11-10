@@ -3,29 +3,27 @@ import { Plus } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { journalApi, achievementApi, userApi } from '../lib/api';
+import { useApi } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import type { JournalEntry, Achievement } from 'shared';
 
 export default function ProgressGarden() {
   const { user } = useAuth();
+  const { journalApi, achievementApi, userApi } = useApi();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
   const [streak, setStreak] = useState(0);
 
-  useEffect(() => {
-    if (user) {
-      loadData();
-    }
-  }, [user]);
-
   const loadData = async () => {
+    if (!user) return;
+    
     try {
+      console.log('Loading progress garden data...');
       const [entriesData, achievementsData, statsData] = await Promise.all([
-        journalApi.getByUserId(user!.id, 30),
-        achievementApi.getUserAchievements(user!.id),
-        userApi.getStats(user!.id)
+        journalApi.getByUserId(user.id, 30),
+        achievementApi.getUserAchievements(user.id),
+        userApi.getStats()
       ]);
 
       setEntries(entriesData);
@@ -33,8 +31,18 @@ export default function ProgressGarden() {
       setStreak(statsData.current_streak);
     } catch (error) {
       console.error('Failed to load data:', error);
+      setEntries([]);
+      setAchievements([]);
+      setStreak(0);
     }
   };
+
+  useEffect(() => {
+    if (user) {
+      loadData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const plantEmojis = ['🌷', '🌻', '🌵', '🌸', '🌼', '🌺', '🌿', '🌹', '🌱', '🪴'];
 

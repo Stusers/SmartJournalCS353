@@ -6,8 +6,68 @@ import type {
   UserStats,
   DailyPrompt
 } from 'shared';
+import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 
 const API_BASE = 'http://localhost:3000/api';
+
+// Hook to get API functions with auth token
+export function useApi() {
+  const { getToken } = useClerkAuth();
+  
+  const fetchWithAuth = async <T>(endpoint: string, options?: RequestInit): Promise<T> => {
+    try {
+      const token = await getToken();
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+      return fetchApi<T>(endpoint, { ...options, token });
+    } catch (error) {
+      console.error('Error in fetchWithAuth:', error);
+      throw error;
+    }
+  };
+
+  return {
+    userApi: {
+      getStats: () => fetchWithAuth<UserStats>(`/users/me/stats`),
+    },
+    journalApi: {
+      create: (userId: number, gratitudeText: string, mood?: string, tags?: string[]) =>
+        fetchWithAuth<{ entry: JournalEntry; new_achievements: Achievement[] }>('/entries', {
+          method: 'POST',
+          body: JSON.stringify({
+            entry_date: new Date().toISOString().split('T')[0],
+            gratitude_text: gratitudeText,
+            mood,
+            tags,
+            is_private: false,
+          }),
+        }),
+      getByUserId: (_userId: number, limit = 20) =>
+        fetchWithAuth<JournalEntry[]>(`/users/me/entries?limit=${limit}`),
+      update: (entryId: number, updates: Partial<JournalEntry>) =>
+        fetchWithAuth<JournalEntry>(`/entries/${entryId}`, {
+          method: 'PUT',
+          body: JSON.stringify(updates),
+        }),
+      delete: (entryId: number) =>
+        fetchWithAuth<void>(`/entries/${entryId}`, { method: 'DELETE' }),
+      search: (_userId: number, query: string) =>
+        fetchWithAuth<JournalEntry[]>(`/users/me/entries/search?q=${encodeURIComponent(query)}`),
+    },
+    achievementApi: {
+      getAll: () => fetchWithAuth<Achievement[]>('/achievements'),
+      getUserAchievements: (_userId: number) =>
+        fetchWithAuth<Achievement[]>(`/users/me/achievements`),
+      getUserProgress: (_userId: number) =>
+        fetchWithAuth<any[]>(`/users/me/achievements/progress`),
+    },
+    promptApi: {
+      getRandom: () => fetchWithAuth<DailyPrompt>('/prompts/random'),
+      getAll: () => fetchWithAuth<DailyPrompt[]>('/prompts'),
+    },
+  };
+}
 
 export class ApiError extends Error {
   constructor(
@@ -21,16 +81,24 @@ export class ApiError extends Error {
   }
 }
 
-async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
+async function fetchApi<T>(endpoint: string, options?: RequestInit & { token?: string | null }): Promise<T> {
   const method = options?.method || 'GET';
+  const { token, ...fetchOptions } = options || {};
 
   try {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...fetchOptions.headers,
+    };
+
+    // Add auth token if provided
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
+      ...fetchOptions,
+      headers,
     });
 
     if (!response.ok) {
@@ -70,65 +138,7 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
   }
 }
 
-// User APIs
-export const userApi = {
-  create: (username: string, email: string, password: string) =>
-    fetchApi<Omit<User, 'password_hash'>>('/users', {
-      method: 'POST',
-      body: JSON.stringify({ username, email, password_hash: password }),
-    }),
-
-  getById: (id: number) =>
-    fetchApi<Omit<User, 'password_hash'>>(`/users/${id}`),
-
-  getStats: (id: number) =>
-    fetchApi<UserStats>(`/users/${id}/stats`),
-};
-
-// Journal APIs
-export const journalApi = {
-  create: (userId: number, gratitudeText: string, mood?: string, tags?: string[]) =>
-    fetchApi<{ entry: JournalEntry; new_achievements: Achievement[] }>('/entries', {
-      method: 'POST',
-      body: JSON.stringify({
-        user_id: userId,
-        entry_date: new Date().toISOString().split('T')[0],
-        gratitude_text: gratitudeText,
-        mood,
-        tags,
-        is_private: false,
-      }),
-    }),
-
-  getByUserId: (userId: number, limit = 20) =>
-    fetchApi<JournalEntry[]>(`/users/${userId}/entries?limit=${limit}`),
-
-  update: (entryId: number, updates: Partial<JournalEntry>) =>
-    fetchApi<JournalEntry>(`/entries/${entryId}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    }),
-
-  delete: (entryId: number) =>
-    fetchApi<void>(`/entries/${entryId}`, { method: 'DELETE' }),
-
-  search: (userId: number, query: string) =>
-    fetchApi<JournalEntry[]>(`/users/${userId}/entries/search?q=${encodeURIComponent(query)}`),
-};
-
-// Achievement APIs
-export const achievementApi = {
-  getAll: () =>
-    fetchApi<Achievement[]>('/achievements'),
-
-  getUserAchievements: (userId: number) =>
-    fetchApi<Achievement[]>(`/users/${userId}/achievements`),
-
-  getUserProgress: (userId: number) =>
-    fetchApi<any[]>(`/users/${userId}/achievements/progress`),
-};
-
-// Prompt APIs
+// Legacy exports for prompts (public endpoints, no auth needed)
 export const promptApi = {
   getRandom: () =>
     fetchApi<DailyPrompt>('/prompts/random'),
