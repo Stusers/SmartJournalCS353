@@ -37,6 +37,3 @@ jobs:
     - name: Run tests
       continue-on-error: true
       run: |
-        mkdir -p ./reports
-        # capture stdout+stderr to a file so we can upload it later
-        npm test 2>&1 | tee ./reports/test-output.txt
