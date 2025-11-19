@@ -2,26 +2,37 @@ import { useState, useEffect } from 'react';
 import { Card } from './ui/card';
 import { Textarea } from './ui/textarea';
 import { Button } from './ui/button';
-import { journalApi } from '../lib/api';
+import { useApi } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import type { JournalEntry } from 'shared';
 
 export default function WeeklyReflection() {
   const { user } = useAuth();
+  const { journalApi } = useApi();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [reflection, setReflection] = useState('');
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (user) {
-      loadWeeklyEntries();
-    }
-  }, [user]);
+  const [loading, setLoading] = useState(false);
 
   const loadWeeklyEntries = async () => {
+    if (!user) {
+      setLoading(false);
+      setEntries([]);
+      return;
+    }
+    
     try {
       setLoading(true);
-      const allEntries = await journalApi.getByUserId(user!.id, 50);
+      console.log('Loading weekly entries for user:', user.id);
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 10000);
+      });
+      
+      const entriesPromise = journalApi.getByUserId(user.id, 50);
+      const allEntries = await Promise.race([entriesPromise, timeoutPromise]);
+      
+      console.log('Entries loaded:', allEntries.length);
 
       // Get last 7 days of entries
       const sevenDaysAgo = new Date();
@@ -33,12 +44,23 @@ export default function WeeklyReflection() {
       });
 
       setEntries(weeklyEntries);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load weekly entries:', error);
+      console.error('Error details:', error.message, error.stack);
+      setEntries([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (user) {
+      loadWeeklyEntries();
+    } else {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]); // Only depend on user.id to avoid re-running unnecessarily
 
   const getMoodForDay = (dayOffset: number) => {
     const targetDate = new Date();
@@ -81,6 +103,7 @@ export default function WeeklyReflection() {
     try {
       await journalApi.create(user.id, reflection, undefined, ['reflection']);
       setReflection('');
+      loadWeeklyEntries(); // Reload entries
       alert('Reflection saved successfully!');
     } catch (error) {
       console.error('Failed to save reflection:', error);
@@ -88,10 +111,11 @@ export default function WeeklyReflection() {
     }
   };
 
-  if (loading) {
+  // Show loading only if we're actively loading and have a user
+  if (loading && user) {
     return (
       <div className="max-w-2xl mx-auto p-6">
-        <p className="text-center text-gray-600">Loading...</p>
+        <p className="text-center text-gray-600">Loading your journal entries...</p>
       </div>
     );
   }

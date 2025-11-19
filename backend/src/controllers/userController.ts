@@ -28,8 +28,8 @@ export const createUser = asyncHandler(async (req: Request, res: Response) => {
   res.status(HTTP_STATUS.CREATED).json(userWithoutPassword);
 });
 
-export const getUserById = asyncHandler(async (req: Request, res: Response) => {
-  const userId = parseInt(req.params.id);
+export const getCurrentUser = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.userId!; // Set by clerkAuth middleware
   const user = await userDb.getUserById(userId);
 
   if (!user) {
@@ -87,7 +87,7 @@ export const deleteUser = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const getUserStats = asyncHandler(async (req: Request, res: Response) => {
-  const userId = parseInt(req.params.id);
+  const userId = req.userId!; // Set by clerkAuth middleware
   const stats = await streakDb.getUserStats(userId);
   res.status(HTTP_STATUS.OK).json(stats);
 });

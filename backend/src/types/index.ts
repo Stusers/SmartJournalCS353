@@ -1,5 +1,6 @@
 export interface User {
   id: number;
+  clerk_id?: string | null;
   username: string;
   email: string;
   password_hash: string;
