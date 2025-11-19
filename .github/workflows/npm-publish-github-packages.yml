@@ -1,0 +1,39 @@
+name: Node.js CI
+
+# concurrency should prevent overlapping runs
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# when something is pushed or a pull request is made to backend it should trigger the workflow
+on:
+  push:
+    branches: [ "backend" ]
+  pull_request:
+    branches: [ "backend" ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+        
+    steps:
+    - uses: actions/checkout@v4
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+# instals dependencies and build the project
+    - run: npm ci
+    - run: npm run build --if-present
+
+# runs tests and captures results even if they fail
+    - name: Run tests
+      continue-on-error: true
+      run: |
