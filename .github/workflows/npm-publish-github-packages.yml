@@ -40,26 +40,3 @@ jobs:
         mkdir -p ./reports
         # capture stdout+stderr to a file so we can upload it later
         npm test 2>&1 | tee ./reports/test-output.txt
-
-#uploads test results regardless of outcome
-    - name: Upload test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-results
-        path: |
-          test-results/**
-          junit.xml
-          test-results.xml
-          coverage/**
-
-# uploads build artifacts regardless of outcome
-    - name: Upload build artifact
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-artifact
-        path: |
-          dist/**
-          build/**
-          .next/**
