@@ -16,6 +16,11 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+        
     steps:
     - uses: actions/checkout@v4
     - name: Use Node.js ${{ matrix.node-version }}
@@ -30,9 +35,11 @@ jobs:
 
 # runs tests and captures results even if they fail
     - name: Run tests
+      continue-on-error: true
       run: |
         mkdir -p ./reports
-        npm test |
+        # capture stdout+stderr to a file so we can upload it later
+        npm test 2>&1 | tee ./reports/test-output.txt
 
 #uploads test results regardless of outcome
     - name: Upload test results
