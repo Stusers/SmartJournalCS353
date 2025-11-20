@@ -2,7 +2,12 @@ import { useState, useEffect } from 'react';
 import { Card } from './ui/card';
 import { Textarea } from './ui/textarea';
 import { Button } from './ui/button';
+
 import { journalApi } from '../lib/api';
+import { aiApi } from '../lib/ai';   // 👈 NEW FILE, not api.ts
+
+
+
 import { useAuth } from '../context/AuthContext';
 import type { JournalEntry } from 'shared';
 
@@ -11,6 +16,11 @@ export default function WeeklyReflection() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [reflection, setReflection] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // AI states
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -23,7 +33,6 @@ export default function WeeklyReflection() {
       setLoading(true);
       const allEntries = await journalApi.getByUserId(user!.id, 50);
 
-      // Get last 7 days of entries
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -80,11 +89,24 @@ export default function WeeklyReflection() {
 
     try {
       await journalApi.create(user.id, reflection, undefined, ['reflection']);
+
+      // AI call
+      setAiLoading(true);
+      setAiInsight(null);
+      setAiError(null);
+
+      const aiResponse = await aiApi.generateWeeklyInsight(reflection);
+      setAiInsight(aiResponse.insight);
+      setAiLoading(false);
+
       setReflection('');
-      alert('Reflection saved successfully!');
-    } catch (error) {
-      console.error('Failed to save reflection:', error);
-      alert('Failed to save reflection');
+      alert('Reflection saved & AI insight generated!');
+    } catch (error: any) {
+      console.error('Failed:', error);
+
+      setAiLoading(false);
+      setAiError('Failed to generate AI insight. Try again.');
+      alert('Reflection saved, but AI insight failed.');
     }
   };
 
@@ -174,11 +196,24 @@ export default function WeeklyReflection() {
       {/* AI Insight */}
       <Card className="p-6 bg-gradient-to-r from-purple-100 via-pink-100 to-blue-100 border-none">
         <h2 className="mb-2">✨ AI Insight</h2>
-        <p className="text-gray-700 italic">
-          {entries.length > 0
-            ? `You've been actively journaling! ${entries.length} entries this week shows great commitment.`
-            : "Start journaling to see personalized insights about your patterns."}
-        </p>
+
+        {aiLoading && (
+          <p className="text-gray-600 italic">Generating insight...</p>
+        )}
+
+        {aiError && (
+          <p className="text-red-600">{aiError}</p>
+        )}
+
+        {aiInsight && (
+          <p className="text-gray-700 whitespace-pre-line">{aiInsight}</p>
+        )}
+
+        {!aiInsight && !aiLoading && !aiError && (
+          <p className="text-gray-700 italic">
+            Start journaling to see personalized insights about your patterns.
+          </p>
+        )}
       </Card>
 
       {/* Save Button */}

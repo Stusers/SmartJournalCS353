@@ -1,15 +1,19 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { testConnection, closePool } from './db/connection.js';
-import { initializeDatabase } from './db/helpers.js';
-import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
-import { requestLogger } from './middleware/requestLogger.js';
-import { logger } from './utils/logger.js';
-import journalRoutes from './routes/journalRoutes.js';
-import userRoutes from './routes/userRoutes.js';
-import achievementRoutes from './routes/achievementRoutes.js';
-import promptRoutes from './routes/promptRoutes.js';
+
+// FIX ALL IMPORTS TO USE .ts (NOT .js)
+import { testConnection, closePool } from './db/connection.ts';
+import { initializeDatabase } from './db/helpers.ts';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.ts';
+import { requestLogger } from './middleware/requestLogger.ts';
+import { logger } from './utils/logger.ts';
+
+import journalRoutes from './routes/journalRoutes.ts';
+import userRoutes from './routes/userRoutes.ts';
+import achievementRoutes from './routes/achievementRoutes.ts';
+import promptRoutes from './routes/promptRoutes.ts';
+import aiRoutes from './routes/aiRoutes.ts';   // <-- AI ROUTE FIXED
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,6 +28,7 @@ app.use('/api', journalRoutes);
 app.use('/api', userRoutes);
 app.use('/api', achievementRoutes);
 app.use('/api', promptRoutes);
+app.use('/api', aiRoutes);   // LOAD THE AI ROUTES HERE
 
 // Health check endpoint
 app.get('/api/health', (_req, res) => {
@@ -79,7 +84,6 @@ const shutdown = async (signal: string) => {
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 
-// Handle uncaught errors
 process.on('uncaughtException', (error) => {
   logger.error({
     type: 'uncaught_exception',
