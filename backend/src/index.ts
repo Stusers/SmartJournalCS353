@@ -7,7 +7,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Load .env from root directory
-config({ path: resolve(__dirname, '../../.env') });
+const envPath = resolve(__dirname, '../../.env');
+const result = config({ path: envPath });
+
+// Verify critical environment variables are loaded
+if (!process.env.DB_HOST || !process.env.DB_NAME) {
+  console.error('CRITICAL: Database environment variables not loaded!');
+  console.error('Attempted to load from:', envPath);
+  console.error('DB_HOST:', process.env.DB_HOST);
+  console.error('DB_NAME:', process.env.DB_NAME);
+  if (result.error) {
+    console.error('Dotenv error:', result.error);
+  }
+}
 import express from 'express';
 import cors from 'cors';
 import { testConnection, closePool } from './db/connection.js';
