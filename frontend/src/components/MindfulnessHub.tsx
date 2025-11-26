@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card } from './ui/card';
 import { journalApi } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -9,13 +9,7 @@ export default function MindfulnessHub() {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (user) {
-      loadEntries();
-    }
-  }, [user]);
-
-  const loadEntries = async () => {
+  const loadEntries = useCallback(async () => {
     try {
       setLoading(true);
       const allEntries = await journalApi.getByUserId(user!.id, 50);
@@ -35,21 +29,42 @@ export default function MindfulnessHub() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadEntries();
+    }
+  }, [user, loadEntries]);
 
   const calculateStreak = () => {
+    if (entries.length === 0) return 0;
+
+    // Sort entries by date, newest first
+    const sortedEntries = [...entries].sort((a, b) =>
+      new Date(b.entry_date).getTime() - new Date(a.entry_date).getTime()
+    );
+
     let streak = 0;
-    let currentDate = new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    for (let i = 0; i < entries.length; i++) {
-      const entryDate = new Date(entries[i].entry_date);
-      const diff = Math.floor((currentDate - entryDate) / (1000 * 60 * 60 * 24));
+    for (let i = 0; i < sortedEntries.length; i++) {
+      const entryDate = new Date(sortedEntries[i].entry_date);
+      entryDate.setHours(0, 0, 0, 0);
 
-      if (diff === streak) {
+      const expectedDate = new Date(today);
+      expectedDate.setDate(expectedDate.getDate() - streak);
+
+      const diffDays = Math.floor((expectedDate.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 0) {
         streak++;
-      } else {
+      } else if (diffDays > 0) {
+        // Gap in streak, stop counting
         break;
       }
+      // If diffDays < 0, this entry is from a future date relative to our expected date, skip it
     }
 
     return streak;
@@ -103,12 +118,12 @@ export default function MindfulnessHub() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-4">
-        <Card className="p-4 bg-gradient-to-br from-green-50 to-emerald-50">
-          <div className="text-sm text-gray-600">🔥 Current Streak</div>
-          <div className="mt-1">{calculateStreak()} days</div>
+        <Card className="p-5 bg-gradient-to-br from-green-50 to-emerald-50">
+          <div className="text-sm text-gray-600 mb-1">🔥 Current Streak</div>
+          <div className="text-2xl">{calculateStreak()} days</div>
         </Card>
         <Card className="p-5 bg-gradient-to-br from-yellow-50 to-orange-50">
-          <div className="text-sm text-gray-600 mb-1">🌿 Days Using Medition In A Row</div>
+          <div className="text-sm text-gray-600 mb-1">🌿 Days Using Meditation In A Row</div>
           <div className="text-2xl">{calculateStreak()} days</div>
         </Card>
       </div>
