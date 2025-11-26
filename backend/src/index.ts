@@ -1,4 +1,13 @@
-import 'dotenv/config';
+import { config } from 'dotenv';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+// ES module equivalents of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load .env from root directory
+config({ path: resolve(__dirname, '../../.env') });
 import express from 'express';
 import cors from 'cors';
 import { testConnection, closePool } from './db/connection.js';
