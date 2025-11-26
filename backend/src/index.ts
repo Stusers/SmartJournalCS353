@@ -11,6 +11,15 @@ const envPath = resolve(__dirname, '../../.env');
 const result = config({ path: envPath });
 
 // Verify critical environment variables are loaded
+console.log('Environment check:', {
+  envPath,
+  DB_HOST: process.env.DB_HOST,
+  DB_PORT: process.env.DB_PORT,
+  DB_NAME: process.env.DB_NAME,
+  DB_USER: process.env.DB_USER,
+  hasPassword: !!process.env.DB_PASSWORD,
+});
+
 if (!process.env.DB_HOST || !process.env.DB_NAME) {
   console.error('CRITICAL: Database environment variables not loaded!');
   console.error('Attempted to load from:', envPath);
@@ -40,6 +49,10 @@ app.use(cors({
   origin: 'http://localhost:5173', // Your frontend URL
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
 app.use(express.json());
 app.use(requestLogger);

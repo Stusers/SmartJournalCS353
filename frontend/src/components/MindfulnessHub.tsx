@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card } from './ui/card';
-import { journalApi } from '../lib/api';
+import { useApi } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import type { JournalEntry } from 'shared';
 
 export default function MindfulnessHub() {
   const { user } = useAuth();
+  const { journalApi } = useApi();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -29,7 +30,7 @@ export default function MindfulnessHub() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, journalApi]);
 
   useEffect(() => {
     if (user) {
