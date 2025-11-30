@@ -136,3 +136,12 @@ export const promptApi = {
   getAll: () =>
     fetchApi<DailyPrompt[]>('/prompts'),
 };
+
+// AI Insight API
+export const aiApi = {
+  generateWeeklyInsight: (reflectionText: string) =>
+    fetchApi<{ insight: string }>('/ai/weekly-insight', {
+      method: 'POST',
+      body: JSON.stringify({ reflectionText }),
+    }),
+};
