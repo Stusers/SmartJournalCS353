@@ -13,7 +13,7 @@ import { BookOpen, Calendar, TrendingUp, Settings, LogOut } from 'lucide-react';
 type Page = 'reflection' | 'gratitude' | 'garden' | 'mindfulness' | 'calendar' | 'affirmations';
 
 function AppContent() {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout } = useAuth();
   const { user: clerkUser, isLoaded } = useUser();
   const [currentPage, setCurrentPage] = useState<Page>('reflection');
 
@@ -102,36 +102,32 @@ function AppContent() {
           <div className="flex justify-around items-center">
             <button
               onClick={() => setCurrentPage('reflection')}
-              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${
-                currentPage === 'reflection' ? 'text-purple-600 bg-purple-50' : 'text-gray-600'
-              }`}
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${currentPage === 'reflection' ? 'text-purple-600 bg-purple-50' : 'text-gray-600'
+                }`}
             >
               <BookOpen size={20} />
               <span className="text-xs">Journal</span>
             </button>
             <button
               onClick={() => setCurrentPage('calendar')}
-              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${
-                currentPage === 'calendar' ? 'text-purple-600 bg-purple-50' : 'text-gray-600'
-              }`}
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${currentPage === 'calendar' ? 'text-purple-600 bg-purple-50' : 'text-gray-600'
+                }`}
             >
               <Calendar size={20} />
               <span className="text-xs">Tracker</span>
             </button>
             <button
               onClick={() => setCurrentPage('garden')}
-              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${
-                currentPage === 'garden' ? 'text-purple-600 bg-purple-50' : 'text-gray-600'
-              }`}
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${currentPage === 'garden' ? 'text-purple-600 bg-purple-50' : 'text-gray-600'
+                }`}
             >
               <TrendingUp size={20} />
               <span className="text-xs">Insights</span>
             </button>
             <button
               onClick={() => setCurrentPage('mindfulness')}
-              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${
-                currentPage === 'mindfulness' ? 'text-purple-600 bg-purple-50' : 'text-gray-600'
-              }`}
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${currentPage === 'mindfulness' ? 'text-purple-600 bg-purple-50' : 'text-gray-600'
+                }`}
             >
               <Settings size={20} />
               <span className="text-xs">Settings</span>

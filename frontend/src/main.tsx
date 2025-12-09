@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ClerkProvider } from './context/AuthContext'
+import { ClerkProvider, DbAuthProvider } from './context/AuthContext'
 import './index.css'
 import App from './App.tsx'
 
@@ -13,7 +13,9 @@ if (!clerkPubKey) {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ClerkProvider publishableKey={clerkPubKey}>
-      <App />
+      <DbAuthProvider>
+        <App />
+      </DbAuthProvider>
     </ClerkProvider>
   </StrictMode>,
 )
