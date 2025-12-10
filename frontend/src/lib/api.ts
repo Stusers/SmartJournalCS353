@@ -1,6 +1,5 @@
 // API client for backend communication
 import type {
-  User,
   JournalEntry,
   Achievement,
   UserStats,
@@ -10,73 +9,98 @@ import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 
 const API_BASE = 'http://localhost:3000/api';
 
+import { useMemo } from 'react';
+
 // Hook to get API functions with auth token
 export function useApi() {
   const { getToken } = useClerkAuth();
-  
-  const fetchWithAuth = async <T>(endpoint: string, options?: RequestInit): Promise<T> => {
-    try {
-      const token = await getToken();
-      if (!token) {
-        throw new Error('No authentication token available');
-      }
-      return fetchApi<T>(endpoint, { ...options, token });
-    } catch (error) {
-      console.error('Error in fetchWithAuth:', error);
-      throw error;
-    }
-  };
 
-  return {
-    userApi: {
-      getStats: () => fetchWithAuth<UserStats>(`/users/me/stats`),
-    },
-    journalApi: {
-      create: (userId: number, gratitudeText: string, mood?: string, tags?: string[]) =>
-        fetchWithAuth<{ entry: JournalEntry; new_achievements: Achievement[] }>('/entries', {
-          method: 'POST',
-          body: JSON.stringify({
-            entry_date: new Date().toISOString().split('T')[0],
-            gratitude_text: gratitudeText,
-            mood,
-            tags,
-            is_private: false,
+  const api = useMemo(() => {
+    const fetchWithAuth = async <T>(endpoint: string, options?: RequestInit): Promise<T> => {
+      try {
+        const token = await getToken();
+        if (!token) {
+          throw new Error('No authentication token available');
+        }
+        return fetchApi<T>(endpoint, { ...options, token });
+      } catch (error) {
+        console.error('Error in fetchWithAuth:', error);
+        throw error;
+      }
+    };
+
+    return {
+      userApi: {
+        getStats: () => fetchWithAuth<UserStats>(`/users/me/stats`),
+      },
+      journalApi: {
+        create: (_userId: number, gratitudeText: string, mood?: string, tags?: string[]) =>
+          fetchWithAuth<{ entry: JournalEntry; new_achievements: Achievement[] }>('/entries', {
+            method: 'POST',
+            body: JSON.stringify({
+              entry_date: new Date().toISOString().split('T')[0],
+              gratitude_text: gratitudeText,
+              mood,
+              tags,
+              is_private: false,
+            }),
           }),
-        }),
-      getByUserId: (_userId: number, limit = 20) =>
-        fetchWithAuth<JournalEntry[]>(`/users/me/entries?limit=${limit}`),
-      update: (entryId: number, updates: Partial<JournalEntry>) =>
-        fetchWithAuth<JournalEntry>(`/entries/${entryId}`, {
-          method: 'PUT',
-          body: JSON.stringify(updates),
-        }),
-      delete: (entryId: number) =>
-        fetchWithAuth<void>(`/entries/${entryId}`, { method: 'DELETE' }),
-      search: (_userId: number, query: string) =>
-        fetchWithAuth<JournalEntry[]>(`/users/me/entries/search?q=${encodeURIComponent(query)}`),
-    },
-    achievementApi: {
-      getAll: () => fetchWithAuth<Achievement[]>('/achievements'),
-      getUserAchievements: (_userId: number) =>
-        fetchWithAuth<Achievement[]>(`/users/me/achievements`),
-      getUserProgress: (_userId: number) =>
-        fetchWithAuth<any[]>(`/users/me/achievements/progress`),
-    },
-    promptApi: {
-      getRandom: () => fetchWithAuth<DailyPrompt>('/prompts/random'),
-      getAll: () => fetchWithAuth<DailyPrompt[]>('/prompts'),
-    },
-  };
+        getByUserId: (_userId: number, limit = 20) =>
+          fetchWithAuth<JournalEntry[]>(`/users/me/entries?limit=${limit}`),
+        getEntriesByDateRange: (_userId: number, startDate: string, endDate: string) =>
+          fetchWithAuth<JournalEntry[]>(`/users/me/entries/range?start_date=${startDate}&end_date=${endDate}`),
+        update: (entryId: number, updates: Partial<JournalEntry>) =>
+          fetchWithAuth<JournalEntry>(`/entries/${entryId}`, {
+            method: 'PUT',
+            body: JSON.stringify(updates),
+          }),
+        delete: (entryId: number) =>
+          fetchWithAuth<void>(`/entries/${entryId}`, { method: 'DELETE' }),
+        search: (_userId: number, query: string) =>
+          fetchWithAuth<JournalEntry[]>(`/users/me/entries/search?q=${encodeURIComponent(query)}`),
+      },
+      achievementApi: {
+        getAll: () => fetchWithAuth<Achievement[]>('/achievements'),
+        getUserAchievements: () =>
+          fetchWithAuth<Achievement[]>(`/users/me/achievements`),
+        getUserProgress: () =>
+          fetchWithAuth<unknown[]>(`/users/me/achievements/progress`),
+      },
+      aiApi: {
+        analyze: (entries: JournalEntry[]) =>
+          fetchWithAuth<{ insight: string }>('/ai/analyze', {
+            method: 'POST',
+            body: JSON.stringify({ entries })
+          }),
+      },
+      devApi: {
+        reset: () => fetchWithAuth<{ message: string }>('/dev/reset', { method: 'POST' }),
+      },
+      promptApi: {
+        getRandom: () => fetchWithAuth<DailyPrompt>('/prompts/random'),
+        getAll: () => fetchWithAuth<DailyPrompt[]>('/prompts'),
+      },
+    };
+  }, [getToken]);
+
+  return api;
 }
 
 export class ApiError extends Error {
+  statusCode: number;
+  endpoint: string;
+  method: string;
+
   constructor(
-    public message: string,
-    public statusCode: number,
-    public endpoint: string,
-    public method: string
+    message: string,
+    statusCode: number,
+    endpoint: string,
+    method: string
   ) {
     super(message);
+    this.statusCode = statusCode;
+    this.endpoint = endpoint;
+    this.method = method;
     this.name = 'ApiError';
   }
 }
@@ -89,11 +113,11 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit & { token?: s
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...fetchOptions.headers,
-    };
+    } as HeadersInit;
 
     // Add auth token if provided
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+      (headers as unknown as Record<string, string>)['Authorization'] = `Bearer ${token}`;
     }
 
     const response = await fetch(`${API_BASE}${endpoint}`, {

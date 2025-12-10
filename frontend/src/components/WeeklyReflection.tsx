@@ -1,40 +1,45 @@
 import { useState, useEffect } from 'react';
-import { Card } from './ui/card';
-import { Textarea } from './ui/textarea';
-import { Button } from './ui/button';
-import { useApi } from '../lib/api';
-import { useAuth } from '../context/AuthContext';
+import { Card } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { useApi } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 import type { JournalEntry } from 'shared';
 
 export default function WeeklyReflection() {
   const { user } = useAuth();
-  const { journalApi } = useApi();
+  // Ensure useApi returns the extended object with aiApi
+  const api = useApi();
+  // @ts-ignore - aiApi is not yet in the shared types but is in the implementation
+  const { journalApi, userApi, aiApi } = api;
+
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [reflection, setReflection] = useState('');
   const [loading, setLoading] = useState(false);
+  const [streak, setStreak] = useState(0);
+  const [aiInsight, setAiInsight] = useState<string>('');
+  const [insightLoading, setInsightLoading] = useState(false);
 
-  const loadWeeklyEntries = async () => {
+  // --- Data Loading Stuff ---
+  const loadData = async () => {
     if (!user) {
       setLoading(false);
       setEntries([]);
       return;
     }
-    
+
     try {
       setLoading(true);
-      console.log('Loading weekly entries for user:', user.id);
-      
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 10000);
-      });
-      
-      const entriesPromise = journalApi.getByUserId(user.id, 50);
-      const allEntries = await Promise.race([entriesPromise, timeoutPromise]);
-      
-      console.log('Entries loaded:', allEntries.length);
 
-      // Get last 7 days of entries
+      // fetch entries + stats at the same time (zoom zoom)
+      const [allEntries, stats] = await Promise.all([
+        journalApi.getByUserId(user.id, 50),
+        userApi.getStats()
+      ]);
+
+      setStreak(stats.current_streak);
+
+      // Filter for just the last week
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -44,10 +49,9 @@ export default function WeeklyReflection() {
       });
 
       setEntries(weeklyEntries);
-    } catch (error: any) {
-      console.error('Failed to load weekly entries:', error);
-      console.error('Error details:', error.message, error.stack);
-      setEntries([]); // Set empty array on error
+    } catch (error: unknown) {
+      console.error('Failed to load data:', error);
+      setEntries([]);
     } finally {
       setLoading(false);
     }
@@ -55,31 +59,102 @@ export default function WeeklyReflection() {
 
   useEffect(() => {
     if (user) {
-      loadWeeklyEntries();
+      loadData();
     } else {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]); // Only depend on user.id to avoid re-running unnecessarily
+  }, [user?.id]);
+
+  // --- AI Brain Power ---
+  const generateInsight = async () => {
+    if (entries.length === 0) {
+      setAiInsight("Start journaling to see personalized insights about your patterns.");
+      return;
+    }
+
+    try {
+      setInsightLoading(true);
+      // Fallback: mostly happy? mostly sad?
+      const moods = entries.map(e => e.mood).filter(Boolean);
+      let fallbackText = '';
+      if (moods.length > 0) {
+        const moodCounts = moods.reduce((acc, mood) => {
+          acc[mood as string] = (acc[mood as string] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+        const topMood = Object.entries(moodCounts).sort((a, b) => b[1] - a[1])[0][0];
+        fallbackText = `Dominant mood: ${topMood}.`;
+      }
+
+      // Try the fancy AI
+      try {
+        if (aiApi) {
+          const data = await aiApi.analyze(entries);
+          if (data.insight) {
+            setAiInsight(data.insight);
+          } else {
+            setAiInsight(fallbackText || "Keep journaling to unlock insights!");
+          }
+        } else {
+          setAiInsight(fallbackText || "AI Service unavailable.");
+        }
+      } catch (err) {
+        console.warn("AI API unavailable, using fallback", err);
+        setAiInsight(fallbackText || "AI Analysis unavailable. Keep reflecting!");
+      }
+
+    } catch (e) {
+      console.error(e);
+      setAiInsight("Unable to generate insight right now.");
+    } finally {
+      setInsightLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (entries.length > 0) {
+      generateInsight();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entries]);
+
+  // --- Boring Helpers ---
+  const moodToEmoji = (mood: string) => {
+    if (!mood) return '';
+    // If it's already an emoji (simple check), return it
+    if (/\p{Emoji}/u.test(mood) && mood.length < 5) return mood;
+
+    const map: Record<string, string> = {
+      'Happy': '😊',
+      'Excited': '🤩',
+      'Grateful': '🙏',
+      'Calm': '😌',
+      'Relaxed': '😌',
+      'Productive': '🚀',
+      'Energetic': '⚡',
+      'Tired': '😴',
+      'Stressed': '😓',
+      'Sad': '😢',
+      'Anxious': '😰',
+      'Angry': '😡',
+      'Neutral': '😐'
+    };
+    return map[mood] || map[mood.charAt(0).toUpperCase() + mood.slice(1)] || '😐';
+  };
 
   const getMoodForDay = (dayOffset: number) => {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() - (6 - dayOffset));
     const dateStr = targetDate.toISOString().split('T')[0];
 
-    const entry = entries.find(e => e.entry_date === dateStr);
-    return entry?.mood || '';
+    const entry = entries.find(e => {
+      const d = new Date(e.entry_date);
+      return d.toISOString().split('T')[0] === dateStr;
+    });
+    // Return only the emoji
+    return moodToEmoji(entry?.mood || '');
   };
-
-  const moodData = [
-    { day: 'Mon', mood: getMoodForDay(0) },
-    { day: 'Tue', mood: getMoodForDay(1) },
-    { day: 'Wed', mood: getMoodForDay(2) },
-    { day: 'Thu', mood: getMoodForDay(3) },
-    { day: 'Fri', mood: getMoodForDay(4) },
-    { day: 'Sat', mood: getMoodForDay(5) },
-    { day: 'Sun', mood: getMoodForDay(6) },
-  ];
 
   const getWeekRange = () => {
     const today = new Date();
@@ -98,18 +173,39 @@ export default function WeeklyReflection() {
   };
 
   const handleSaveReflection = async () => {
-    if (!reflection.trim() || !user) return;
+    if (!reflection.trim()) return;
+
+    if (!user) {
+      alert("You are not logged in or your session has expired. Please refresh the page or log in again.");
+      return;
+    }
 
     try {
+      console.log('Creating new entry');
       await journalApi.create(user.id, reflection, undefined, ['reflection']);
+
       setReflection('');
-      loadWeeklyEntries(); // Reload entries
+      loadData(); // Reload entries
       alert('Reflection saved successfully!');
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Failed to save reflection:', error);
-      alert('Failed to save reflection');
+      if (error instanceof Error) {
+        alert(`Failed to save reflection: ${error.message}`);
+      } else {
+        alert('Failed to save reflection: Unknown error');
+      }
     }
   };
+
+  const moodData = [
+    { day: 'Mon', mood: getMoodForDay(0) },
+    { day: 'Tue', mood: getMoodForDay(1) },
+    { day: 'Wed', mood: getMoodForDay(2) },
+    { day: 'Thu', mood: getMoodForDay(3) },
+    { day: 'Fri', mood: getMoodForDay(4) },
+    { day: 'Sat', mood: getMoodForDay(5) },
+    { day: 'Sun', mood: getMoodForDay(6) },
+  ];
 
   // Show loading only if we're actively loading and have a user
   if (loading && user) {
@@ -149,7 +245,7 @@ export default function WeeklyReflection() {
         </Card>
         <Card className="p-4 bg-gradient-to-br from-green-50 to-emerald-50">
           <div className="text-sm text-gray-600">🔥 Current Streak</div>
-          <div className="mt-1">{entries.length} days</div>
+          <div className="mt-1">{streak} days</div>
         </Card>
       </div>
 
@@ -197,11 +293,19 @@ export default function WeeklyReflection() {
 
       {/* AI Insight */}
       <Card className="p-6 bg-gradient-to-r from-purple-100 via-pink-100 to-blue-100 border-none">
-        <h2 className="mb-2">✨ AI Insight</h2>
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="mb-0">✨ AI Insight</h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={generateInsight}
+            disabled={insightLoading || entries.length === 0}
+          >
+            {insightLoading ? 'Analyzing...' : 'Refresh'}
+          </Button>
+        </div>
         <p className="text-gray-700 italic">
-          {entries.length > 0
-            ? `You've been actively journaling! ${entries.length} entries this week shows great commitment.`
-            : "Start journaling to see personalized insights about your patterns."}
+          {insightLoading ? "Analyzing your week..." : aiInsight}
         </p>
       </Card>
 

@@ -1,13 +1,22 @@
 import { ClerkProvider, useUser, useAuth as useClerkAuth } from '@clerk/clerk-react';
-import { useEffect, useState, useRef, useMemo } from 'react';
-import type { ReactNode } from 'react';
+import { useEffect, useState, useRef, useMemo, createContext, useContext } from 'react';
+
 import type { User } from 'shared';
 
 // Re-export ClerkProvider for use in main.tsx
 export { ClerkProvider };
 
-// Custom hook that provides a simplified auth interface compatible with existing code
-export function useAuth() {
+interface DbAuthContextType {
+  user: Omit<User, 'password_hash'> | null;
+  login: () => void;
+  logout: () => void;
+  isAuthenticated: boolean;
+  loading: boolean;
+}
+
+const DbAuthContext = createContext<DbAuthContextType | null>(null);
+
+export function DbAuthProvider({ children }: { children: React.ReactNode }) {
   const { user: clerkUser, isLoaded } = useUser();
   const { signOut, getToken } = useClerkAuth();
   const [dbUser, setDbUser] = useState<Omit<User, 'password_hash'> | null>(null);
@@ -54,7 +63,7 @@ export function useAuth() {
         // Get token - Clerk's getToken() returns a JWT session token
         const token = await getToken();
         console.log('Token retrieved:', token ? `Token exists (${token.length} chars)` : 'null');
-        
+
         if (!token) {
           console.error('No token available from Clerk');
           throw new Error('No token available');
@@ -70,9 +79,9 @@ export function useAuth() {
             'Content-Type': 'application/json',
           },
         });
-        
+
         console.log('Response status:', response.status);
-        
+
         if (!response.ok) {
           const errorText = await response.text();
           console.error('Response error:', errorText);
@@ -109,19 +118,38 @@ export function useAuth() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clerkUserId, isLoaded]); // Only depend on clerkUserId and isLoaded
 
+  const logout = () => {
+    setDbUser(null);
+    hasFetchedRef.current = false;
+    clerkUserIdRef.current = null;
+    signOut();
+  };
+
   const isAuthenticated = useMemo(() => {
     return !!clerkUser && isLoaded && !!dbUser && !loading;
   }, [clerkUser, isLoaded, dbUser, loading]);
 
-  return {
+  const value = {
     user: dbUser,
-    login: () => {}, // Not needed with Clerk
-    logout: () => {
-      setDbUser(null);
-      hasFetchedRef.current = false;
-      clerkUserIdRef.current = null;
-      signOut();
-    },
+    login: () => { }, // Not needed with Clerk
+    logout,
     isAuthenticated,
+    loading
   };
+
+  return (
+    <DbAuthContext.Provider value={value}>
+      {children}
+    </DbAuthContext.Provider>
+  );
+}
+
+// Custom hook that provides a simplified auth interface compatible with existing code
+// eslint-disable-next-line react-refresh/only-export-components
+export function useAuth() {
+  const context = useContext(DbAuthContext);
+  if (context === null) {
+    throw new Error('useAuth must be used within a DbAuthProvider');
+  }
+  return context;
 }

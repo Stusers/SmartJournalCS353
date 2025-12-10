@@ -32,8 +32,7 @@ CREATE TABLE IF NOT EXISTS journal_entries (
     tags TEXT[],
     is_private BOOLEAN DEFAULT false,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(user_id, entry_date)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- User streaks table
@@ -89,12 +88,15 @@ END;
 $$ language 'plpgsql';
 
 -- Triggers for updated_at
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_journal_entries_updated_at ON journal_entries;
 CREATE TRIGGER update_journal_entries_updated_at BEFORE UPDATE ON journal_entries
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_user_streaks_updated_at ON user_streaks;
 CREATE TRIGGER update_user_streaks_updated_at BEFORE UPDATE ON user_streaks
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 

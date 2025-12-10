@@ -17,13 +17,13 @@ export default function ProgressGarden() {
 
   const loadData = async () => {
     if (!user) return;
-    
+
     try {
       console.log('Loading progress garden data...');
       const [entriesData, achievementsData, statsData] = await Promise.all([
-        journalApi.getByUserId(user.id, 30),
-        achievementApi.getUserAchievements(user.id),
-        userApi.getStats()
+        journalApi.getByUserId(user.id, 50),
+        achievementApi.getUserAchievements(),
+        userApi.getStats(),
       ]);
 
       setEntries(entriesData);
@@ -46,7 +46,7 @@ export default function ProgressGarden() {
 
   const plantEmojis = ['🌷', '🌻', '🌵', '🌸', '🌼', '🌺', '🌿', '🌹', '🌱', '🪴'];
 
-  const getPlantForEntry = (entry: JournalEntry, index: number) => {
+  const getPlantForEntry = (_entry: JournalEntry, index: number) => {
     return plantEmojis[index % plantEmojis.length];
   };
 
@@ -135,7 +135,7 @@ export default function ProgressGarden() {
                 key={achievement.id}
                 className="bg-purple-100 text-purple-700 px-4 py-2 border border-purple-300"
               >
-                {achievement.badge_emoji || '🏆'} {achievement.name}
+                {achievement.icon || '🏆'} {achievement.name}
               </Badge>
             ))
           ) : (

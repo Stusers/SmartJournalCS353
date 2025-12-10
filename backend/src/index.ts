@@ -7,8 +7,29 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Load .env from root directory
-const envPath = resolve(__dirname, '../../.env');
-const result = config({ path: envPath });
+// Robust .env loading
+const possiblePaths = [
+  resolve(__dirname, '../../.env'), // From src/index.ts to root
+  resolve(process.cwd(), '../.env'), // From backend/ dir to root
+  resolve(process.cwd(), '.env'),    // In case CWD is root
+  '/Users/stasu/Grav/SmartJournalCS353/.env' // Hardcoded fallback for debugging
+];
+
+let envPath = '';
+let result: any = { error: undefined, parsed: undefined };
+
+import fs from 'fs';
+
+for (const p of possiblePaths) {
+  if (fs.existsSync(p)) {
+    console.log(`Found .env at: ${p}`);
+    envPath = p;
+    result = config({ path: p });
+    break;
+  } else {
+    console.log(`Creating looking for .env at: ${p}`);
+  }
+}
 
 // Verify critical environment variables are loaded
 console.log('Environment check:', {
@@ -18,6 +39,7 @@ console.log('Environment check:', {
   DB_NAME: process.env.DB_NAME,
   DB_USER: process.env.DB_USER,
   hasPassword: !!process.env.DB_PASSWORD,
+  hasOpenRouterKey: !!process.env.OPENROUTER_API_KEY,
 });
 
 if (!process.env.DB_HOST || !process.env.DB_NAME) {
@@ -40,6 +62,8 @@ import journalRoutes from './routes/journalRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import achievementRoutes from './routes/achievementRoutes.js';
 import promptRoutes from './routes/promptRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
+import devRoutes from './routes/devRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -62,6 +86,8 @@ app.use('/api', journalRoutes);
 app.use('/api', userRoutes);
 app.use('/api', achievementRoutes);
 app.use('/api', promptRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/dev', devRoutes);
 
 // Health check endpoint
 app.get('/api/health', (_req, res) => {
